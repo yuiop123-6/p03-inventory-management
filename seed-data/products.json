@@ -1,0 +1,101 @@
+[
+  {
+    "id": 1,
+    "productCode": "P001",
+    "name": "Wireless Mouse",
+    "description": "Wireless Mouse / inventory item",
+    "categoryId": 1,
+    "unitPrice": "29.90",
+    "currentStock": 35,
+    "minimumStockLevel": 10,
+    "createdAt": "2026-10-17T00:00:00Z"
+  },
+  {
+    "id": 2,
+    "productCode": "P002",
+    "name": "Keyboard",
+    "description": "Keyboard / inventory item",
+    "categoryId": 1,
+    "unitPrice": "49.00",
+    "currentStock": 10,
+    "minimumStockLevel": 10,
+    "createdAt": "2026-10-17T00:00:00Z"
+  },
+  {
+    "id": 3,
+    "productCode": "P003",
+    "name": "Docking Station",
+    "description": "Docking Station / inventory item",
+    "categoryId": 1,
+    "unitPrice": "89.00",
+    "currentStock": 0,
+    "minimumStockLevel": 5,
+    "createdAt": "2026-10-17T00:00:00Z"
+  },
+  {
+    "id": 4,
+    "productCode": "P004",
+    "name": "USB Cable",
+    "description": "USB Cable / inventory item",
+    "categoryId": 2,
+    "unitPrice": "8.50",
+    "currentStock": 2,
+    "minimumStockLevel": 5,
+    "createdAt": "2026-10-17T00:00:00Z"
+  },
+  {
+    "id": 5,
+    "productCode": "P005",
+    "name": "Notebook",
+    "description": "Notebook / inventory item",
+    "categoryId": 2,
+    "unitPrice": "3.00",
+    "currentStock": 60,
+    "minimumStockLevel": 10,
+    "createdAt": "2026-10-17T00:00:00Z"
+  },
+  {
+    "id": 6,
+    "productCode": "P006",
+    "name": "Printer Ink",
+    "description": "Printer Ink / inventory item",
+    "categoryId": 2,
+    "unitPrice": "25.00",
+    "currentStock": 0,
+    "minimumStockLevel": 2,
+    "createdAt": "2026-10-17T00:00:00Z"
+  },
+  {
+    "id": 7,
+    "productCode": "P007",
+    "name": "Office Chair",
+    "description": "Office Chair / inventory item",
+    "categoryId": 3,
+    "unitPrice": "199.00",
+    "currentStock": 14,
+    "minimumStockLevel": 3,
+    "createdAt": "2026-10-17T00:00:00Z"
+  },
+  {
+    "id": 8,
+    "productCode": "P008",
+    "name": "Office Desk",
+    "description": "Office Desk / inventory item",
+    "categoryId": 3,
+    "unitPrice": "230.00",
+    "currentStock": 1,
+    "minimumStockLevel": 1,
+    "createdAt": "2026-10-17T00:00:00Z"
+  },
+  {
+    "id": 9,
+    "productCode": "P009",
+    "name": "Desk Lamp",
+    "description": "Desk Lamp / inventory item",
+    "categoryId": 3,
+    "unitPrice": "35.00",
+    "currentStock": 7,
+    "minimumStockLevel": 7,
+    "createdAt": "2026-10-17T00:00:00Z"
+  }
+]

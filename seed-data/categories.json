@@ -1,0 +1,17 @@
+[
+  {
+    "id": 1,
+    "name": "Electronics",
+    "description": "Electronic devices and accessories"
+  },
+  {
+    "id": 2,
+    "name": "Consumables",
+    "description": "Everyday supplies"
+  },
+  {
+    "id": 3,
+    "name": "Furniture",
+    "description": "Office furniture"
+  }
+]
