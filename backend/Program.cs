@@ -179,6 +179,10 @@ builder.Services.AddScoped<IProductService, ProductService>();
 builder.Services.AddScoped<ISeedImportService, SeedImportService>();
 builder.Services.AddScoped<IIdentitySeeder, IdentitySeeder>();
 builder.Services.AddSingleton<ITokenService, TokenService>();
+// ---------- 成员B：库存流水 / 仪表盘 / 报表服务 ----------
+builder.Services.AddScoped<IStockTransactionService, StockTransactionService>();
+builder.Services.AddScoped<IDashboardService, DashboardService>();
+builder.Services.AddScoped<IReportService, ReportService>();
 
 var app = builder.Build();
 
