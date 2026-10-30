@@ -1,0 +1,188 @@
+{
+  "info": {
+    "name": "P03 Inventory API",
+    "description": "P03 企业库存管理 API 集合（契约基线 docs/api-contract.md）。\n\n用法：\n1. 先执行 Auth / Login（自动保存 token 到集合变量）\n2. 其余请求自动带 Bearer token\n3. baseUrl 默认 http://localhost:5000，可在集合变量中修改",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "token", "value": "" },
+    { "key": "adminUser", "value": "admin" },
+    { "key": "adminPass", "value": "Admin@123!" },
+    { "key": "opUser", "value": "operator" },
+    { "key": "opPass", "value": "Operator@123!" },
+    { "key": "requestId", "value": "" },
+    { "key": "productId", "value": "1" },
+    { "key": "categoryId", "value": "1" },
+    { "key": "transactionId", "value": "" }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [{ "key": "token", "value": "{{token}}", "type": "string" }]
+  },
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login (admin)",
+          "event": [{
+            "listen": "test",
+            "script": {
+              "exec": [
+                "if (pm.response.code === 200) {",
+                "  pm.collectionVariables.set('token', pm.response.json().token);",
+                "}"
+              ],
+              "type": "text/javascript"
+            }
+          }],
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"{{adminUser}}\",\n  \"password\": \"{{adminPass}}\"\n}" },
+            "description": "错凭据 → 401；每 IP 每分钟 10 次 → 429 RATE_LIMITED"
+          }
+        },
+        {
+          "name": "Login (operator)",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["if (pm.response.code === 200) {", "  pm.collectionVariables.set('token', pm.response.json().token);", "}"], "type": "text/javascript" }
+          }],
+          "request": {
+            "method": "POST",
+            "auth": { "type": "noauth" },
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/auth/login",
+            "body": { "mode": "raw", "raw": "{\n  \"username\": \"{{opUser}}\",\n  \"password\": \"{{opPass}}\"\n}" }
+          }
+        },
+        {
+          "name": "Me",
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/auth/me" }
+        }
+      ]
+    },
+    {
+      "name": "Categories",
+      "item": [
+        { "name": "List", "request": { "method": "GET", "url": "{{baseUrl}}/api/categories" } },
+        {
+          "name": "Create",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["if (pm.response.code === 201) {", "  pm.collectionVariables.set('categoryId', pm.response.json().id);", "}"], "type": "text/javascript" }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/categories",
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"测试分类\",\n  \"description\": \"由 Postman 创建\"\n}" },
+            "description": "名称忽略大小写重复 → 409 DUPLICATE_VALUE"
+          }
+        },
+        { "name": "Update", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/api/categories/{{categoryId}}", "body": { "mode": "raw", "raw": "{\n  \"name\": \"测试分类-改\",\n  \"description\": \"已更新\"\n}" } } },
+        { "name": "Delete", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/categories/{{categoryId}}", "description": "有关联商品 → 409 REFERENTIAL_CONFLICT (E04)" } }
+      ]
+    },
+    {
+      "name": "Products",
+      "item": [
+        { "name": "List (all filters)", "request": { "method": "GET", "url": "{{baseUrl}}/api/products?search=&categoryId=&stockStatus=all&page=1&pageSize=20", "description": "stockStatus ∈ all|normal|low|out（E15 口径）" } },
+        {
+          "name": "Get by id",
+          "event": [{
+            "listen": "test",
+            "script": { "exec": ["if (pm.response.code === 200) {", "  const d = pm.response.json();", "  pm.collectionVariables.set('productId', d.id);", "}"], "type": "text/javascript" }
+          }],
+          "request": { "method": "GET", "url": "{{baseUrl}}/api/products/{{productId}}" }
+        },
+        {
+          "name": "Create",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/products",
+            "body": { "mode": "raw", "raw": "{\n  \"productCode\": \"P999\",\n  \"name\": \"测试商品\",\n  \"categoryId\": {{categoryId}},\n  \"unitPrice\": 9.9,\n  \"currentStock\": 10,\n  \"minimumStockLevel\": 2\n}" },
+            "description": "编号重复 → 409 (E02)；未知分类/负值 → 400 (E11)；初始库存为期初值不产生流水"
+          }
+        },
+        { "name": "Update (forbidden fields demo)", "request": { "method": "PUT", "header": [{ "key": "Content-Type", "value": "application/json" }], "url": "{{baseUrl}}/api/products/{{productId}}", "body": { "mode": "raw", "raw": "{\n  \"name\": \"改名\"\n}" }, "description": "请求含 productCode/currentStock/createdAt → 400 (E12)" } },
+        { "name": "Delete", "request": { "method": "DELETE", "url": "{{baseUrl}}/api/products/{{productId}}", "description": "有流水或正库存 → 409 REFERENTIAL_CONFLICT" } }
+      ]
+    },
+    {
+      "name": "Stock Transactions",
+      "item": [
+        {
+          "name": "IN",
+          "event": [{
+            "listen": "pre-request",
+            "script": { "exec": ["pm.collectionVariables.set('requestId', pm.variables.replaceIn('{{$guid}}'))"], "type": "text/javascript" }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/stock-transactions",
+            "body": { "mode": "raw", "raw": "{\n  \"requestId\": \"{{requestId}}\",\n  \"productId\": {{productId}},\n  \"type\": \"IN\",\n  \"quantity\": 5,\n  \"notes\": \"Postman IN\"\n}" }
+          }
+        },
+        {
+          "name": "OUT",
+          "event": [{
+            "listen": "pre-request",
+            "script": { "exec": ["pm.collectionVariables.set('requestId', pm.variables.replaceIn('{{$guid}}'))"], "type": "text/javascript" }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/stock-transactions",
+            "body": { "mode": "raw", "raw": "{\n  \"requestId\": \"{{requestId}}\",\n  \"productId\": {{productId}},\n  \"type\": \"OUT\",\n  \"quantity\": 2,\n  \"notes\": \"Postman OUT\"\n}" },
+            "description": "超库存 → 400 INSUFFICIENT_STOCK (E07)；并发超卖被条件更新拦截 (E09)"
+          }
+        },
+        {
+          "name": "ADJUST (admin only)",
+          "event": [{
+            "listen": "pre-request",
+            "script": { "exec": ["pm.collectionVariables.set('requestId', pm.variables.replaceIn('{{$guid}}'))"], "type": "text/javascript" }
+          }],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/stock-transactions",
+            "body": { "mode": "raw", "raw": "{\n  \"requestId\": \"{{requestId}}\",\n  \"productId\": {{productId}},\n  \"type\": \"ADJUST\",\n  \"quantity\": 10,\n  \"notes\": \"盘点调整\"\n}" },
+            "description": "Operator → 403 (E14)；目标为绝对库存，允许 0"
+          }
+        },
+        {
+          "name": "Replay same requestId",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{baseUrl}}/api/stock-transactions",
+            "body": { "mode": "raw", "raw": "{\n  \"requestId\": \"{{requestId}}\",\n  \"productId\": {{productId}},\n  \"type\": \"ADJUST\",\n  \"quantity\": 10\n}" },
+            "description": "同 RequestId 同负载 → 200 首次结果；改负载 → 409 IDEMPOTENCY_CONFLICT (E13)"
+          }
+        },
+        { "name": "Query", "request": { "method": "GET", "url": "{{baseUrl}}/api/stock-transactions?productId={{productId}}&type=&fromUtc=&toUtc=&page=1&pageSize=20", "description": "Created DESC 排序；item 含 productCode/productName (E10)" } }
+      ]
+    },
+    {
+      "name": "Dashboard",
+      "item": [
+        { "name": "Get", "request": { "method": "GET", "url": "{{baseUrl}}/api/dashboard", "description": "4 指标 + 最近 10 条流水 + dailyNetChanges（7 个 UTC 自然日，零填充）(E16)" } }
+      ]
+    },
+    {
+      "name": "Reports",
+      "item": [
+        { "name": "Products (stock value)", "request": { "method": "GET", "url": "{{baseUrl}}/api/reports/products?stockStatus=all&page=1&pageSize=20", "description": "stockAmount = unitPrice × currentStock (E17)" } },
+        { "name": "Transactions", "request": { "method": "GET", "url": "{{baseUrl}}/api/reports/transactions?type=&fromUtc=&toUtc=&page=1&pageSize=20" } }
+      ]
+    }
+  ]
+}

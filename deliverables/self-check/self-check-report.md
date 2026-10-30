@@ -96,15 +96,17 @@ B 的实现为 CAS 条件更新 + 最多 3 次重试（[StockTransactionService.
 | 浏览器验证流程「登录→Dashboard 核对 9/129/4/2 与 7 日图→Products/Categories→Stock IN/OUT/ADJUST→Reports 金额与流水→Operator 写操作全部隐藏」 | PASS | 录屏完整走通前 5 步；Operator 隐藏项 UI 8/8 |
 | 「重放 200 返回首次结果，负载不一致 409」 | PASS | E13：重放 200 同结果；异负载 409 IDEMPOTENCY_CONFLICT |
 | 「Operator 登录确认写操作全部隐藏」 | PASS | 新建/删除/编辑入口全部隐藏，ADJUST 选项禁用 |
-| README 引用 `tests/api_smoke_e01_e17.py`（19/19）、`tests/e09_e13_concurrency.py`（12/12） | **缺失** | tests/ 目录不存在（见 6.3 缺口 G1） |
-| README 引用 `docs/acceptance-records.md`、`docs/deployment.md`、`docs/known-issues.md` | **缺失** | docs/ 仅有 api-contract.md（见 6.3 缺口 G2） |
+| README 引用 `tests/api_smoke_e01_e17.py`（19/19）、`tests/e09_e13_concurrency.py`（12/12） | **已补齐** | 实测 19/19、12/12 全绿（曾缺失，2026-10-30 修复，见 6.3-G1） |
+| README 引用 `docs/acceptance-records.md`、`docs/deployment.md`、`docs/known-issues.md` | **已补齐** | 三文档入库（曾缺失，2026-10-30 修复，见 6.3-G2） |
 
 ### 6.3 项目书级缺口（非 D 单独职责，建议认领）
 
-| 缺口 | 说明 | 建议责任 |
+> **2026-10-30 更新：G1/G2 均已补齐并入库（tests/ + docs/），断言数与 README 规格一致（19/19、12/12），实测全绿。**
+
+| 缺口 | 说明 | 状态 |
 | --- | --- | --- |
-| G1 | `tests/` 目录：README 承诺的 Python 冒烟脚本（E01-E17, 19 项断言）与并发复现脚本（12 项断言）、Postman 集合均不存在。本次自检的 Node 脚本覆盖了同等断言（临时目录，未入库），可移植为 Python 或将 Node 脚本入 tests/ | A/B（后端测试交付） |
-| G2 | `docs/` 缺 acceptance-records.md / deployment.md / known-issues.md；本报告可作为 acceptance-records 的基础 | A 牵头，D 补充演示章节 |
+| G1 | `tests/` 目录：README 承诺的 Python 冒烟脚本（E01-E17, 19 项断言）与并发复现脚本（12 项断言）、Postman 集合均不存在 | **已补齐**：[api_smoke_e01_e17.py](file:///f:/p03-inventory-management/tests/api_smoke_e01_e17.py) 实测 19/19；[e09_e13_concurrency.py](file:///f:/p03-inventory-management/tests/e09_e13_concurrency.py) 实测 12/12（自包含，免重置可跑）；[P03.postman_collection.json](file:///f:/p03-inventory-management/tests/P03.postman_collection.json) JSON 校验通过 |
+| G2 | `docs/` 缺 acceptance-records.md / deployment.md / known-issues.md | **已补齐**：[acceptance-records.md](file:///f:/p03-inventory-management/docs/acceptance-records.md)（正式验收记录）、[deployment.md](file:///f:/p03-inventory-management/docs/deployment.md)（部署说明）、[known-issues.md](file:///f:/p03-inventory-management/docs/known-issues.md)（7 项已知问题/设计说明） |
 
 ## 七、遗留事项
 
