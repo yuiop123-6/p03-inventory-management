@@ -1,0 +1,110 @@
+{
+  "generatedAt": "2026-10-30T02:15:12.933Z",
+  "total": 17,
+  "passed": 17,
+  "failed": 0,
+  "results": [
+    {
+      "id": "E01",
+      "title": "seed baseline 9/129/4/2, 3 categories, 0 transactions",
+      "pass": true,
+      "details": "dashboard=9/129/4/2 products=9 categories=3 txns=0"
+    },
+    {
+      "id": "E02",
+      "title": "duplicate product code -> 409 DUPLICATE_VALUE",
+      "pass": true,
+      "details": "status=409 code=DUPLICATE_VALUE"
+    },
+    {
+      "id": "E03",
+      "title": "duplicate category name (case/space-insensitive) -> 409",
+      "pass": true,
+      "details": "exact=409/DUPLICATE_VALUE variant=409/DUPLICATE_VALUE"
+    },
+    {
+      "id": "E04",
+      "title": "delete category with products -> 409 REFERENTIAL_CONFLICT",
+      "pass": true,
+      "details": "status=409 code=REFERENTIAL_CONFLICT"
+    },
+    {
+      "id": "E11",
+      "title": "negative price/stock, negative qty, zero OUT -> 400",
+      "pass": true,
+      "details": "price=400 stock=400 inNeg=400 outZero=400"
+    },
+    {
+      "id": "E12",
+      "title": "PUT with productCode/currentStock -> 400, fields untouched",
+      "pass": true,
+      "details": "code=400 stock=400 untouched=true"
+    },
+    {
+      "id": "E14",
+      "title": "operator: ADJUST/DELETE/PUT/POST-CAT/DEL-CAT 403; reads OK",
+      "pass": true,
+      "details": "403s=403,403,403,403,403 reads=200/200"
+    },
+    {
+      "id": "E05",
+      "title": "IN +5: 201, stock & dashboard updated atomically",
+      "pass": true,
+      "details": "status=201 10->15 db=15 dash=134"
+    },
+    {
+      "id": "E06",
+      "title": "OUT -2 (by operator): 201, stock decremented",
+      "pass": true,
+      "details": "status=201 15->13 db=13"
+    },
+    {
+      "id": "E07",
+      "title": "OUT exceeding stock -> 400 INSUFFICIENT_STOCK, no side effects",
+      "pass": true,
+      "details": "status=400/INSUFFICIENT_STOCK stock 13->13 txns 2->2"
+    },
+    {
+      "id": "E08",
+      "title": "ADJUST to 0 (admin only): 201, status=out",
+      "pass": true,
+      "details": "status=201 13->0 db=0/out"
+    },
+    {
+      "id": "E13",
+      "title": "same requestId: replay returns first result; diff payload 409; single txn",
+      "pass": true,
+      "details": "first=201 replay=200/sameId conflict=409/IDEMPOTENCY_CONFLICT txns 3->4->4"
+    },
+    {
+      "id": "E09",
+      "title": "concurrent OUT of full stock: exactly one 201, loser 400/409, no oversell, stock 0",
+      "pass": true,
+      "details": "product=P005 stock=60 statuses=201/400 loserCode=INSUFFICIENT_STOCK final=0 txns+1"
+    },
+    {
+      "id": "E10",
+      "title": "tx query: filter by product/type, DESC order, paging, joined names",
+      "pass": true,
+      "details": "p2=3 out=1 desc=true paged=true joined=true"
+    },
+    {
+      "id": "E15",
+      "title": "status buckets out/low/normal mutually exclusive & consistent (incl. stock==threshold is low)",
+      "pass": true,
+      "details": "out=5 low=3 normal=1 sum=9/9 apiMatch=true"
+    },
+    {
+      "id": "E16",
+      "title": "dashboard: metrics match DB, recent<=10 joined, 7-day zero-filled net changes",
+      "pass": true,
+      "details": "metrics=9/17/3/5 recent=8 days=7 netValsMatch=true exp=[0,0,0,0,0,0,-112] got=[0,0,0,0,0,0,-112]"
+    },
+    {
+      "id": "E17",
+      "title": "reports: stockValue=price*stock, filters work, txn report matches query, DESC+joined",
+      "pass": true,
+      "details": "valueOk=true rows=9/9 outFilter=5 txnTotal=8/8 desc=true joined=true"
+    }
+  ]
+}
