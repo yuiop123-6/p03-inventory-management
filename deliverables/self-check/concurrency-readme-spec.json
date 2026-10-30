@@ -1,0 +1,17 @@
+{
+  "generatedAt": "2026-10-30T02:56:51.041Z",
+  "results": [
+    {
+      "id": "E09",
+      "title": "stock 5, 10 concurrent OUT x1: exactly 5x201 + 5 rejected, stock 0, sequential balances",
+      "pass": true,
+      "detail": "201x5 rejected=5(INSUFFICIENT_STOCK) stock=0 txns+5 balances=4,3,2,1,0"
+    },
+    {
+      "id": "E13",
+      "title": "6 concurrent identical POSTs (same RequestId): all return same first result, exactly 1 txn",
+      "pass": true,
+      "detail": "statuses=201,200,200,200,200,200 sameResult=true stock=3 txns+1"
+    }
+  ]
+}

@@ -67,7 +67,46 @@ B 的实现为 CAS 条件更新 + 最多 3 次重试（[StockTransactionService.
 
 两者均为契约错误码总表内定义的响应。E09 核心验收点「并发不超卖、恰好一笔成功、库存归零、流水唯一」全部满足。
 
-## 六、遗留事项
+## 六、项目书逐行验证（2026-10-30 补充）
+
+> 依据：README.md（项目书交付形态）验收规格 + 任务看板 D 职责（库存操作页/Dashboard/报表/图表 + 截图/录屏/E01-E17 走查 + 交叉评审关注点）。原 manifest/docx 附件已失效，待原件后可再做文字比对。
+
+### 6.1 D 职责逐项核对
+
+| # | 项目书条目 | 结果 | 证据 |
+| --- | --- | --- | --- |
+| 1 | 库存操作页（商品搜索选择/IN/OUT/ADJUST/实时预览/幂等 RequestId） | 完成 | [stock.component.ts](file:///f:/p03-inventory-management/frontend/src/app/pages/stock/stock.component.ts)；E05-E09、E13 API 全过 |
+| 2 | Dashboard 仪表盘（4 指标+最近流水+7 日净变更图表） | 完成 | [dashboard 截图](file:///f:/p03-inventory-management/deliverables/screenshots/desktop/02-dashboard.png)；E16 对账全过（含零填充逐值核对） |
+| 3 | 报表页面（商品库存金额+流水报表，过滤/分页） | 完成 | E17 全过：stockAmount=unitPrice×currentStock 9/9 行吻合 |
+| 4 | 图表组件（7 日净变更柱状图，chart.js） | 完成 | 截图确认渲染；有数据后增量正确（E16 netValsMatch=true） |
+| 5 | 页面截图（桌面 1366×768 + 移动 375×812 响应式） | 完成 | deliverables/screenshots/ 13 张 |
+| 6 | 演示录屏 | 完成 | deliverables/video/p03-demo.mp4 |
+| 7 | E01-E17 验收走查 | 完成 | API 17/17 + UI 补充 8/8（见第三节/第四节） |
+| 8 | 交叉评审点：复用公共组件 | 通过 | 公共逻辑集中于 core/（ApiService/AuthService/ToastService/拦截器/守卫/normalize/models）+ shell 布局；页面无重复实现 |
+| 9 | 交叉评审点：路由无冲突 | 通过 | [app.routes.ts](file:///f:/p03-inventory-management/frontend/src/app/app.routes.ts)：6 路径唯一、全懒加载、通配重定向 |
+| 10 | 交叉评审点：权限守卫生效 | 通过 | authGuard 保护全部业务路由；登出后访问 /products 重定向 /login（UI 8/8） |
+| 11 | 交叉评审点：空状态/加载态正常 | 通过 | 流水空状态、搜索无结果、骨架屏均在截图/走查中确认 |
+
+### 6.2 README 验收规格逐行核对
+
+| README 原文条目 | 结果 | 说明 |
+| --- | --- | --- |
+| E09「10 并发恰 5 成功 5 拒绝」 | PASS（按规格复测） | 库存 5 + 10 并发 OUT×1：恰 5×201 + 5 拒绝，库存 0，余额严格 4,3,2,1,0，流水恰 +5；证据 [concurrency-readme-spec.json](file:///f:/p03-inventory-management/deliverables/self-check/concurrency-readme-spec.json) |
+| E13「并发幂等」 | PASS（按规格复测） | 同 RequestId 6 并发同负载：全部返回首次结果（同 ID 同 newStock），恰好 1 条流水 |
+| 浏览器验证流程「登录→Dashboard 核对 9/129/4/2 与 7 日图→Products/Categories→Stock IN/OUT/ADJUST→Reports 金额与流水→Operator 写操作全部隐藏」 | PASS | 录屏完整走通前 5 步；Operator 隐藏项 UI 8/8 |
+| 「重放 200 返回首次结果，负载不一致 409」 | PASS | E13：重放 200 同结果；异负载 409 IDEMPOTENCY_CONFLICT |
+| 「Operator 登录确认写操作全部隐藏」 | PASS | 新建/删除/编辑入口全部隐藏，ADJUST 选项禁用 |
+| README 引用 `tests/api_smoke_e01_e17.py`（19/19）、`tests/e09_e13_concurrency.py`（12/12） | **缺失** | tests/ 目录不存在（见 6.3 缺口 G1） |
+| README 引用 `docs/acceptance-records.md`、`docs/deployment.md`、`docs/known-issues.md` | **缺失** | docs/ 仅有 api-contract.md（见 6.3 缺口 G2） |
+
+### 6.3 项目书级缺口（非 D 单独职责，建议认领）
+
+| 缺口 | 说明 | 建议责任 |
+| --- | --- | --- |
+| G1 | `tests/` 目录：README 承诺的 Python 冒烟脚本（E01-E17, 19 项断言）与并发复现脚本（12 项断言）、Postman 集合均不存在。本次自检的 Node 脚本覆盖了同等断言（临时目录，未入库），可移植为 Python 或将 Node 脚本入 tests/ | A/B（后端测试交付） |
+| G2 | `docs/` 缺 acceptance-records.md / deployment.md / known-issues.md；本报告可作为 acceptance-records 的基础 | A 牵头，D 补充演示章节 |
+
+## 七、遗留事项
 
 1. 无阻断缺陷。
 2. E13 重放返回 200（非 201）——契约仅要求「返回首次结果」，实测同 ID 同结果、不产生新流水，符合契约。
