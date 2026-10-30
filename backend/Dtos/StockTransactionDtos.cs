@@ -27,12 +27,15 @@ public class CreateStockTransactionRequest
     public string? Notes { get; set; }
 }
 
-/// <summary>库存事务响应，字段与 docs/api-contract.md 一一对应。</summary>
+/// <summary>库存事务响应，字段与 docs/api-contract.md 一一对应。
+/// ProductCode/ProductName 由查询时关联 Products 表填充（前端流水表/仪表盘展示用）。</summary>
 public record StockTransactionDto(
     long Id,
     string TransactionReference,
     string RequestId,
     long ProductId,
+    string ProductCode,
+    string ProductName,
     string Type,
     int Quantity,
     int PreviousStock,

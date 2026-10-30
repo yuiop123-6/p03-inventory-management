@@ -36,7 +36,7 @@ import { environment } from '../../environments/environment';
 
 /**
  * API 入口地址来自 src/environments：
- * 开发环境为同源 /api（dev-server 代理转发到 http://localhost:5080），
+ * 开发环境为同源 /api（dev-server 代理转发到 http://localhost:5000），
  * 生产环境由 environment.production.ts 的 apiUrl 指定后端地址。
  */
 const BASE = environment.apiUrl;
@@ -115,11 +115,16 @@ export class ApiService {
   }
 
   getCategories(): Observable<Category[]> {
+    // 契约（成员 A/B 后端）：GET /categories 返回分页结构 {items,...}，取 items；
+    // 兼容返回裸数组的旧实现。
     return this.http
-      .get<RawCategory[]>(`${BASE}/categories`)
+      .get<RawCategory[] | RawPagedResult<RawCategory>>(`${BASE}/categories`)
       .pipe(
         catchError((error) => this.translate(error)),
-        map((raw) => (Array.isArray(raw) ? raw.map(normalizeCategory) : [])),
+        map((raw) => {
+          const items = Array.isArray(raw) ? raw : Array.isArray(raw?.items) ? raw.items : [];
+          return items.map(normalizeCategory);
+        }),
       );
   }
 

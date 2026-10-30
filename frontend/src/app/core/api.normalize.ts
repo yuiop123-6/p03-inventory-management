@@ -36,6 +36,8 @@ export interface RawUserInfo {
 
 export interface RawLoginResponse {
   accessToken?: string;
+  /** 成员 A/B 后端（docs/api-contract.md 基准）返回的字段名 */
+  token?: string;
   tokenType?: string;
   /** 旧后端：绝对时间 ISO 字符串 */
   expiresAtUtc?: string;
@@ -197,7 +199,7 @@ export function normalizeLogin(raw: RawLoginResponse, now: number = Date.now()):
       : new Date(now + toNumber(raw?.expiresIn, DEFAULT_TOKEN_SECONDS) * 1000).toISOString();
 
   return {
-    accessToken: raw?.accessToken ?? '',
+    accessToken: raw?.accessToken ?? raw?.token ?? '',
     expiresAtUtc,
     user: normalizeUserInfo(raw?.user),
   };

@@ -62,10 +62,17 @@ public class StockTransactionService : IStockTransactionService
         var notes = NormalizeNotes(request.Notes);
         var requestHash = ComputeRequestHash(request.ProductId, type, request.Quantity, notes);
 
+        // ---------- 商品信息一次性读取（响应需回显 productCode/productName；不存在 404） ----------
+        var productInfo = await _db.Products.AsNoTracking()
+            .Where(p => p.Id == request.ProductId)
+            .Select(p => new { p.ProductCode, p.Name })
+            .FirstOrDefaultAsync(ct)
+            ?? throw ApiException.NotFound($"Product {request.ProductId} does not exist.");
+
         // ---------- 2. 幂等预检查（快速路径）：相同 RequestId 直接返回首次结果，不重复执行 ----------
         var existing = await FindByRequestIdAsync(requestId, ct);
         if (existing is not null)
-            return (VerifyReplay(existing, requestHash), false);
+            return (VerifyReplay(existing, requestHash, productInfo.ProductCode, productInfo.Name), false);
 
         // ---------- 3. 双重串行锁：先 RequestId（幂等串行）再 ProductId（库存串行），全程固定顺序无死锁 ----------
         var requestIdLock = RequestIdLocks[(uint)requestId.GetHashCode() % LockStripeCount];
@@ -79,7 +86,7 @@ public class StockTransactionService : IStockTransactionService
                 // 双重检查：并发同 RequestId 的双重提交可能已插入流水
                 existing = await FindByRequestIdAsync(requestId, ct);
                 if (existing is not null)
-                    return (VerifyReplay(existing, requestHash), false);
+                    return (VerifyReplay(existing, requestHash, productInfo.ProductCode, productInfo.Name), false);
 
                 // ---------- 4. 数据库事务：库存更新 + 流水插入原子提交，禁止部分成功（E05-E08） ----------
                 await using var transaction = await _db.Database.BeginTransactionAsync(ct);
@@ -160,7 +167,7 @@ public class StockTransactionService : IStockTransactionService
                 await _db.SaveChangesAsync(ct);
 
                 await transaction.CommitAsync(ct);
-                return (Map(transactionRow), true);
+                return (Map(transactionRow, productInfo.ProductCode, productInfo.Name), true);
             }
             finally
             {
@@ -206,7 +213,11 @@ public class StockTransactionService : IStockTransactionService
             .ThenByDescending(t => t.Id)
             .Skip((page - 1) * pageSize)
             .Take(pageSize)
-            .Select(t => Map(t))
+            // 关联商品表回显编码/名称（有流水的商品不可删除，INNER JOIN 不丢行）
+            .Join(_db.Products.AsNoTracking(),
+                t => t.ProductId, p => p.Id,
+                (t, p) => new { t, p.ProductCode, ProductName = p.Name })
+            .Select(x => Map(x.t, x.ProductCode, x.ProductName))
             .ToListAsync(ct);
 
         return PagedResult<StockTransactionDto>.Create(items, total, page, pageSize);
@@ -220,7 +231,8 @@ public class StockTransactionService : IStockTransactionService
             .FirstOrDefaultAsync(t => t.RequestId == requestId, ct);
 
     /// <summary>幂等重放校验：相同负载返回首次结果；相同 RequestId 不同负载 → 409 IDEMPOTENCY_CONFLICT（E13）。</summary>
-    private static StockTransactionDto VerifyReplay(StockTransaction existing, string requestHash)
+    private static StockTransactionDto VerifyReplay(
+        StockTransaction existing, string requestHash, string productCode, string productName)
     {
         if (existing.RequestHash is not null
             && !string.Equals(existing.RequestHash, requestHash, StringComparison.Ordinal))
@@ -230,7 +242,7 @@ public class StockTransactionService : IStockTransactionService
                 new { requestId = existing.RequestId });
         }
 
-        return Map(existing);
+        return Map(existing, productCode, productName);
     }
 
     /// <summary>计算操作后库存。IN 防止 int 溢出；OUT 不足时返回 null（→ 400 INSUFFICIENT_STOCK）。</summary>
@@ -311,13 +323,16 @@ public class StockTransactionService : IStockTransactionService
         return Convert.ToHexString(bytes); // 64 位十六进制，匹配 RequestHash nvarchar(64)
     }
 
-    /// <summary>实体 → DTO 映射；时间统一标记 UTC（契约要求 ISO 8601 Z 后缀）。</summary>
-    internal static StockTransactionDto Map(StockTransaction t)
+    /// <summary>实体 → DTO 映射；时间统一标记 UTC（契约要求 ISO 8601 Z 后缀）。
+    /// 商品编码/名称由调用方提供（查询时关联 Products 表）。</summary>
+    internal static StockTransactionDto Map(StockTransaction t, string productCode = "", string productName = "")
         => new(
             t.Id,
             t.TransactionReference,
             t.RequestId,
             t.ProductId,
+            productCode,
+            productName,
             t.Type,
             t.Quantity,
             t.PreviousStock,

@@ -36,12 +36,15 @@ public class DashboardService : IDashboardService
             .CountAsync(p => p.CurrentStock > 0 && p.CurrentStock <= p.MinimumStockLevel, ct);
         var outOfStockProducts = await products.CountAsync(p => p.CurrentStock == 0, ct);
 
-        // ---------- 最近 10 条流水（CreatedAt DESC, Id DESC） ----------
+        // ---------- 最近 10 条流水（CreatedAt DESC, Id DESC，关联商品回显编码/名称） ----------
         var recentTransactions = await _db.StockTransactions.AsNoTracking()
             .OrderByDescending(t => t.CreatedAt)
             .ThenByDescending(t => t.Id)
             .Take(RecentTransactionCount)
-            .Select(t => StockTransactionService.Map(t))
+            .Join(_db.Products.AsNoTracking(),
+                t => t.ProductId, p => p.Id,
+                (t, p) => new { t, p.ProductCode, ProductName = p.Name })
+            .Select(x => StockTransactionService.Map(x.t, x.ProductCode, x.ProductName))
             .ToListAsync(ct);
 
         // ---------- 过去 7 个 UTC 自然日（含今天）每日净变更，无交易日填 0（E16） ----------

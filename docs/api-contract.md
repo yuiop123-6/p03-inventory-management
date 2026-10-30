@@ -58,14 +58,14 @@
 | PUT /api/products/{id} | Admin | 仅允许 `name/description/categoryId/unitPrice/minimumStockLevel`；请求含 `productCode/currentStock/createdAt` → 400；404 |
 | DELETE /api/products/{id} | Admin | 有流水或正库存 → 409；其余删除（无流水且库存=0） |
 
-### Stock / Dashboard / Reports（成员B交付，占位约定）
+### Stock / Dashboard / Reports（成员B交付）
 | 方法/路径 | 权限 | 契约要点 |
 | --- | --- | --- |
-| POST /api/stock-transactions | Operator(IN/OUT)、Admin(IN/OUT/ADJUST) | `requestId`(UUID,必填)/productId/type/quantity/notes?；201 返回交易实体含 previousStock/newStock/transactionReference；重放同 RequestId 同负载返回首次结果；不同负载 409 IDEMPOTENCY_CONFLICT；不足 400 INSUFFICIENT_STOCK |
-| GET /api/stock-transactions | 登录 | `productId,type,fromUtc(含),toUtc(不含),page,pageSize`；CreatedAt DESC, Id DESC |
-| GET /api/dashboard | 登录 | 4 指标 + 最近 10 条流水 + 过去 7 个 UTC 自然日净变更（零填充） |
+| POST /api/stock-transactions | Operator(IN/OUT)、Admin(IN/OUT/ADJUST) | `requestId`(UUID,必填)/productId/type/quantity/notes?；201 返回交易实体含 `productCode/productName`/previousStock/newStock/transactionReference；重放同 RequestId 同负载返回首次结果；不同负载 409 IDEMPOTENCY_CONFLICT；不足 400 INSUFFICIENT_STOCK |
+| GET /api/stock-transactions | 登录 | `productId,type,fromUtc(含),toUtc(不含),page,pageSize`；CreatedAt DESC, Id DESC；item 含 `productCode/productName`（关联商品回显） |
+| GET /api/dashboard | 登录 | 4 指标 + 最近 10 条流水（含 `productCode/productName`）+ 过去 7 个 UTC 自然日净变更（`dailyNetChanges`，零填充） |
 | GET /api/reports/products | 登录 | 同商品查询口径 + 库存金额 unitPrice × currentStock |
-| GET /api/reports/transactions | 登录 | 同流水过滤分页，默认最新优先 |
+| GET /api/reports/transactions | 登录 | 同流水过滤分页，默认最新优先，item 含 `productCode/productName` |
 
 ## 领域口径（与验收清单一致）
 
