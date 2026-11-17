@@ -96,6 +96,9 @@ npm run build -- --configuration production
 ## 9. 验收测试
 
 ```bash
+# 后端单测（71 个；在 backend/ 目录执行，需指定 sln）
+dotnet test .\P03.Inventory.sln
+
 python tests/api_smoke_e01_e17.py      # E01-E17，19 断言（需干净基线；会改数据，测后按第 4 节重置）
 python tests/e09_e13_concurrency.py    # E09/E13 并发，12 断言（主库自包含模式）
 python tests/e09_e13_concurrency.py --isolated   # 独立重置测试库模式（验收清单 testIsolation 要求）
