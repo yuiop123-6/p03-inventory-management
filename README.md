@@ -42,7 +42,7 @@ docs/                    # 部署 / API 契约 / 验收记录 / 已知问题
 
 ## 快速开始
 
-前置：.NET 8 SDK（8.0.400+，根目录 global.json 锁定）、SQL Server Express **LocalDB**（注意：装 SDK 不自带，需随 VS 或 SQL Server Express 安装）、Node.js 20.19+。全新机器先 `dotnet tool restore` 安装 EF 工具。详见 [docs/deployment.md](docs/deployment.md)。
+前置：.NET 8 SDK（8.0.400+，根目录 global.json 锁定）、SQL Server Express **LocalDB**（装 SDK 不自带；Express 安装器「基本」类型也不含，需「自定义」勾选 LocalDB 或用介质里的 SqlLocalDB.msi / VS Installer 单个组件，详见 [docs/deployment.md](docs/deployment.md)）、Node.js 20.19+。全新机器先 `dotnet tool restore` 安装 EF 工具。
 
 ```bash
 # 0) 安装 EF 工具（仅全新机器首次需要）

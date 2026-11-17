@@ -7,12 +7,12 @@
 | # | 组件 | 说明 | 验证命令 |
 | --- | --- | --- | --- |
 | 1 | .NET SDK **8.0** | 仓库根目录有 `global.json` 锁定 8.x；装 8.0.400 或更高 8.x 版本 | `dotnet --version` 显示 8.0.x |
-| 2 | **SQL Server Express LocalDB** | ⚠️ **装 .NET SDK 不自带 LocalDB**。它随 Visual Studio 或 SQL Server Express 安装：下载「SQL Server Express 安装程序」→ 安装时选 **Basic（基本）** 即包含 LocalDB；已装 VS 2022 的机器通常已有 | `sqllocaldb info` 列出 `MSSQLLocalDB` |
+| 2 | **SQL Server Express LocalDB** | ⚠️ **装 .NET SDK 不自带 LocalDB**，安装器「基本(Basic)」类型装的也是完整引擎实例、**不含 LocalDB**。三选一：<br>① 运行 SQL Server Express 安装程序 → 选**自定义(Custom)** → 功能选择页勾选 **SQL Server Express LocalDB**（其余可不勾）<br>② 官方下载页选「下载介质」→ 选 **LocalDB 包**，直接运行其中的 `SqlLocalDB.msi`<br>③ 已装 VS 2022：打开 Visual Studio Installer → 单个组件 → 勾选 **SQL Server Express LocalDB** | `sqllocaldb info` 列出 `MSSQLLocalDB` |
 | 3 | Node.js 18+ | 前端构建 | `node -v` |
 | 4 | Python 3.10+（可选） | 验收脚本 | `python --version` |
 
-> 没有 LocalDB、只有完整 SQL Server/Express 实例？改 `backend/appsettings.json` 连接串：
-> `"Server=localhost;Database=P03Inventory;Trusted_Connection=True;TrustServerCertificate=True"`（按实际实例名/账号调整）。本地演示无需改动。
+> 没有 LocalDB、只有完整 SQL Server/Express 引擎实例？改 `backend/appsettings.json` 连接串（默认实例写 `localhost`，Express 基本安装的实例名是 `localhost\SQLEXPRESS`，按实际实例名/账号调整）：
+> `"Server=localhost\SQLEXPRESS;Database=P03Inventory;Trusted_Connection=True;TrustServerCertificate=True"`。本地演示无需改动。
 
 ## 2. 后端启动（backend/ 目录）
 
@@ -61,7 +61,7 @@ dotnet run -- --seed-import
 | --- | --- | --- |
 | `dotnet ef: 无法执行，找不到命令` | 未安装 EF 工具 | `dotnet tool restore`（第 2 步第 1 条命令） |
 | `dotnet --version` 显示 10.x/7.x 或报 global.json 不匹配 | SDK 版本不符 | 装 .NET 8 SDK（8.0.400+）；`global.json` 允许 8.x 内最新特性带 |
-| 启动报数据库连接失败 / `sqllocaldb` 不是命令 | LocalDB 未安装 | 第 1 节第 2 行安装 SQL Server Express Basic |
+| 启动报数据库连接失败 / `sqllocaldb` 不是命令 | LocalDB 未安装 | 按第 1 节第 2 行三种方式之一安装 LocalDB（注意选「自定义」勾选，不是「基本」） |
 | `dotnet ef database drop` 失败：数据库正在使用 | 后端还在运行 | 停掉后端进程再执行 |
 | 种子导入拒绝执行 | 库中已有流水（保护机制） | 按第 4 节重置后再导入 |
 | 登录连续失败后 429 | 登录限流（每 IP 每分钟 10 次） | 等 1 分钟再试 |
