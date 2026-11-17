@@ -2,22 +2,26 @@
 """P03 concurrency reproduction: E09 oversell protection + E13 concurrent idempotency.
 12 checks - Python stdlib only.
 
-Requires the backend running (default http://localhost:5000).
-The script is SELF-CONTAINED: it pins the products it needs to a known stock
-via ADJUST first, so it can run on any running instance regardless of the
-current data state. Nothing else in the database is touched except the
-transactions it creates.
+Two modes:
 
-One-command reproduce (repo root, backend running):
-    python tests/e09_e13_concurrency.py
+1. DEFAULT (self-contained, runs against the main instance):
+       python tests/e09_e13_concurrency.py
+   Requires the backend running (default http://localhost:5000). Pins the
+   products it needs to a known stock via ADJUST, so it can run on any
+   running instance regardless of the current data state.
 
-Optional: set P03_API to target another instance, e.g. an isolated copy:
-    set P03_API=http://localhost:5100 && python tests/e09_e13_concurrency.py
+2. ISOLATED (acceptance-manifest testIsolation compliant):
+       python tests/e09_e13_concurrency.py --isolated
+   Creates a SEPARATE database P03InventoryTest, seeds it, launches a private
+   API instance on http://localhost:5100, runs the same 12 checks there, then
+   drops the test database. Fully matches the manifest rule
+   "E09+ on reset test databases". Needs no other backend running.
+   A build is performed first (dotnet ef), so allow ~1 minute.
 
-NOTE: creates transactions (P007/P008 end at stock 14 / 3).
+NOTE (default mode): creates transactions (P007/P008 end at stock 14 / 3).
 Reset to the pristine demo baseline afterwards if needed:
-    cd backend
-    dotnet ef database drop --force   (stop the backend first!)
+    cd backend   (stop the backend first!)
+    dotnet ef database drop --force
     dotnet ef database update
     dotnet run -- --seed-import
 
@@ -32,13 +36,19 @@ Exit codes: 0 = all pass, 2 = some failed, 1 = setup error.
 """
 import json
 import os
+import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 import uuid
 from concurrent.futures import ThreadPoolExecutor
 
 BASE = os.environ.get("P03_API", "http://localhost:5000")
+ISOLATED = "--isolated" in sys.argv
+TEST_DB = "P03InventoryTest"
+TEST_URL = "http://localhost:5100"
+BACKEND = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "backend")
 ADMIN = ("admin", "Admin@123!")
 
 results = []
@@ -64,7 +74,7 @@ def rec(cid, ok, detail):
     print("%s %s :: %s" % ("PASS" if ok else "FAIL", cid, detail))
 
 
-def main():
+def run_checks():
     r = api("POST", "/api/auth/login", {"username": ADMIN[0], "password": ADMIN[1]})
     if r[0] != 200:
         print("SETUP ERROR: login failed with HTTP %s (is the backend running?)" % r[0])
@@ -146,6 +156,69 @@ def main():
             "GET", "/api/stock-transactions?pageSize=1", token=token)[1]["total"] == tx_after,
         "sequential replay after the race still returns first result, no extra txn")
 
+
+def dotnet(args, env=None, check=True):
+    p = subprocess.run(["dotnet"] + args, cwd=BACKEND, env=env,
+                       capture_output=True, text=True)
+    if check and p.returncode != 0:
+        print("SETUP ERROR: dotnet %s failed\n%s" % (args[0], (p.stdout + p.stderr)[-1500:]))
+        raise SystemExit(1)
+    return p
+
+
+def isolated_env():
+    env = dict(os.environ)
+    env["ConnectionStrings__Default"] = (
+        "Server=(localdb)\\MSSQLLocalDB;Database=%s;Trusted_Connection=True;"
+        "MultipleActiveResultSets=true;TrustServerCertificate=True" % TEST_DB)
+    env["Urls"] = TEST_URL
+    return env
+
+
+def kill_tree(proc):
+    if proc.poll() is None:
+        if os.name == "nt":
+            subprocess.run(["taskkill", "/PID", str(proc.pid), "/T", "/F"],
+                           capture_output=True)
+        else:
+            proc.terminate()
+        proc.wait(timeout=15)
+
+
+def main():
+    if not ISOLATED:
+        run_checks()
+    else:
+        print("ISOLATED MODE: test database %s + private API on %s" % (TEST_DB, TEST_URL))
+        env = isolated_env()
+        print("  [1/5] reset & create test database ...")
+        dotnet(["ef", "database", "drop", "--force"], env, check=False)  # drop leftover, ok if absent
+        dotnet(["ef", "database", "update"], env)
+        print("  [2/5] seed baseline ...")
+        dotnet(["run", "--no-build", "--", "--seed-import"], env)
+        proc = subprocess.Popen(["dotnet", "run", "--no-build"], cwd=BACKEND, env=env,
+                                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        try:
+            print("  [3/5] waiting for private API ...")
+            global BASE
+            BASE = TEST_URL
+            for _ in range(60):
+                try:
+                    if api("POST", "/api/auth/login",
+                           {"username": ADMIN[0], "password": ADMIN[1]})[0] == 200:
+                        break
+                except Exception:
+                    pass
+                time.sleep(1)
+            else:
+                print("SETUP ERROR: private API on %s did not become ready" % TEST_URL)
+                raise SystemExit(1)
+            print("  [4/5] running checks on isolated instance ...")
+            run_checks()
+        finally:
+            print("  [5/5] teardown (stop API, drop test database) ...")
+            kill_tree(proc)
+            dotnet(["ef", "database", "drop", "--force"], env, check=False)
     failed = [cid for cid, ok in results if not ok]
     print("\nCONCURRENCY: %d/%d PASS%s" % (len(results) - len(failed), len(results),
                                            "" if not failed else ", FAILED: " + ",".join(failed)))

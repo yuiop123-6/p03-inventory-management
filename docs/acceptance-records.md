@@ -1,9 +1,20 @@
 # P03 验收记录（E01-E17）
 
-> 记录日期：2026-10-30 ｜ 执行环境：后端 :5000（Development）+ Angular 前端 :4200（proxy /api→5000）
+> 记录日期：2026-10-30（2026-11-17 补充环境整改与性能记录） ｜ 执行环境：后端 :5000（Development）+ Angular 前端 :4200（proxy /api→5000）
 > 数据基线：种子导入后 9 商品 / 总库存 129 / 低库存 4 / 缺货 2 / 流水 0
 > 证据包：`deliverables/self-check/`（断言明细 JSON）、`deliverables/screenshots/`（13 张）、`deliverables/video/p03-demo.mp4`
-> 自动化脚本：`tests/api_smoke_e01_e17.py`（19 断言）、`tests/e09_e13_concurrency.py`（12 断言）
+> 自动化脚本：`tests/api_smoke_e01_e17.py`（19 断言）、`tests/e09_e13_concurrency.py`（12 断言，主库自包含 + `--isolated` 独立库两种模式）、`tests/perf_check.py`（P95 抽测）
+
+## 测试环境说明（验收清单要求项）
+
+| 项 | 值 |
+| --- | --- |
+| 操作系统 | Windows 11（10.0.26300） |
+| CPU / 逻辑核 | AMD Ryzen（Family 25 Model 116）/ 16 |
+| .NET SDK | 8.0.400（仓库 `global.json` 锁定 8.x） |
+| 数据库 | SQL Server LocalDB 16.0.1000.6（`(localdb)\MSSQLLocalDB`） |
+| EF 工具 | dotnet-ef 8.0.32（`backend/.config/dotnet-tools.json` 锁定，`dotnet tool restore` 安装） |
+| 数据规模 | 9 商品 / 总库存 129 / 0 流水（种子基线） |
 
 ## 一、验收结果总览
 
@@ -26,7 +37,7 @@
 | E06 | Operator 执行 OUT 201，库存递减 | PASS | 15→13 |
 | E07 | 出库超库存 → 400 INSUFFICIENT_STOCK，零副作用 | PASS | 库存不变、流水不变 |
 | E08 | ADJUST 到 0：201，状态 out | PASS | 13→0 |
-| E09 | 并发防超卖：10 并发 OUT×1（库存 5）恰 5 成功 5 拒绝，余额严格 4→0，流水恰 +5 | PASS | 见并发脚本输出 |
+| E09 | 并发防超卖：10 并发 OUT×1（库存 5）恰 5 成功 5 拒绝，余额严格 4→0，流水恰 +5 | PASS | 主库模式与独立库模式均 12/12（见下） |
 | E10 | 流水查询：productId/type 过滤、DESC、分页、关联名称回显 | PASS | rows=3 out=1 desc=True |
 | E11 | 负单价 / 负库存 / 负 IN / 零 OUT → 400 | PASS | 3 断言全过 |
 | E12 | PUT 含 productCode/currentStock → 400 且数据未被篡改 | PASS | 编号/库存保持原值 |
@@ -49,10 +60,32 @@
 | 防重复提交（按钮 loading） | PASS |
 | 角色菜单控制（Dashboard/报表菜单按角色渲染） | PASS |
 
-## 四、复现方式
+## 四、测试隔离（acceptance_manifest testIsolation 要求）
+
+清单规定：`E01-E08 sequential on fresh seed; E09+ on reset test databases`。
+
+- E09/E13 的深度并发用例由 `tests/e09_e13_concurrency.py` 提供**独立重置测试库模式**：
+  `python tests/e09_e13_concurrency.py --isolated`
+  自动创建独立库 `P03InventoryTest` → 迁移 + 种子 → 启动私有 API 实例（:5100）→ 执行 12 断言 → 停实例 → 删除测试库。全程不触碰主库。
+- 2026-11-17 实测独立库模式 **12/12 PASS**；主库自包含模式（默认，免重置可跑）同样 12/12 PASS。
+
+## 五、性能抽测记录（需求书性能条款）
+
+执行方式：`python tests/perf_check.py`（顺序请求、无外部负载）。2026-11-17 实测：
+
+| 场景 | 样本 | P50 | **P95** | max | 目标 | 结果 |
+| --- | --- | --- | --- | --- | --- | --- |
+| 商品列表 | 50 | 4.8ms | **20.5ms** | 28.9ms | < 1000ms | PASS |
+| 商品详情 | 50 | 3.9ms | **24.7ms** | 29.4ms | < 1000ms | PASS |
+| 库存提交（IN） | 30 | 19.1ms | **30.8ms** | 32.6ms | < 2000ms | PASS |
+| 仪表盘（无硬性门槛） | 30 | 6.3ms | 26.8ms | 30.5ms | - | 记录 |
+
+> 注：需求书要求记录硬件、SQL Server 版本与数据规模，见「测试环境说明」表。重复执行 `perf_check.py` 可随时复核。
+
+## 六、复现方式
 
 ```bash
-# 后端（backend/ 目录）
+# 后端（backend/ 目录）——全新机器先执行 dotnet tool restore（见 docs/deployment.md）
 dotnet ef database drop --force    # 先停掉运行中的后端
 dotnet ef database update
 dotnet run -- --seed-import        # 9/129/4/2 基线对账
@@ -63,11 +96,13 @@ npm start                          # :4200，proxy /api→5000
 
 # 自动化验收（仓库根目录，后端运行中）
 python tests/api_smoke_e01_e17.py     # 19/19（会改数据，测后需重置基线）
-python tests/e09_e13_concurrency.py   # 12/12（自包含，可在任意状态运行）
+python tests/e09_e13_concurrency.py   # 12/12（主库自包含模式，可在任意状态运行）
+python tests/e09_e13_concurrency.py --isolated   # 12/12（独立重置测试库，不触碰主库）
+python tests/perf_check.py            # P95 性能抽测
 ```
 
-## 五、备注
+## 七、备注
 
 - E09 拒绝方实际返回 400 INSUFFICIENT_STOCK（CAS 重读后库存确已被抢完）；409 STOCK_CONFLICT 为重试耗尽路径，两者均在契约错误码表内。
 - E13 重放返回 200（非 201），符合「重放返回首次结果」语义；首次 201。
-- 原 acceptance_manifest.json / 需求书 docx 附件已失效，本记录依据 docs/api-contract.md 领域口径 + README 验收规格执行；原件到位后可再做文字比对。
+- 2026-11-17 起已按 acceptance_manifest.json 原件核对：testIsolation 要求（E09+ 独立重置测试库）由并发脚本 `--isolated` 模式满足；环境前置与全新机器安装指引见 docs/deployment.md。

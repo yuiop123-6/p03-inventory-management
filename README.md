@@ -42,9 +42,13 @@ docs/                    # 部署 / API 契约 / 验收记录 / 已知问题
 
 ## 快速开始
 
-前置：.NET 8 SDK、SQL Server（或 LocalDB）、Node.js 20.19+。
+前置：.NET 8 SDK（8.0.400+，根目录 global.json 锁定）、SQL Server Express **LocalDB**（注意：装 SDK 不自带，需随 VS 或 SQL Server Express 安装）、Node.js 20.19+。全新机器先 `dotnet tool restore` 安装 EF 工具。详见 [docs/deployment.md](docs/deployment.md)。
 
 ```bash
+# 0) 安装 EF 工具（仅全新机器首次需要）
+cd backend
+dotnet tool restore
+
 # 1) 数据库初始化 + 种子导入（基线 9/129/4/2，默认账号 admin / operator）
 cd backend
 dotnet ef database update
@@ -65,7 +69,9 @@ npm start
 
 ```bash
 python tests/api_smoke_e01_e17.py     # API 冒烟 19/19（需干净基线库，重置方法见脚本头注释）
-python tests/e09_e13_concurrency.py   # E09 并发超卖 / E13 并发幂等 12/12（独立测试库，一键复现）
+python tests/e09_e13_concurrency.py   # E09 并发超卖 / E13 并发幂等 12/12（主库自包含，免重置）
+python tests/e09_e13_concurrency.py --isolated   # 同上 12/12（独立重置测试库，符合 testIsolation）
+python tests/perf_check.py            # P95 性能抽测（列表/详情<1s，提交<2s）
 ```
 
 浏览器验证：登录 → Dashboard 核对 9/129/4/2 与 7 日图 → Products/Categories CRUD →
