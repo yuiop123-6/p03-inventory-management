@@ -24,3 +24,7 @@ Thumbs.db
 # 本地机密/环境配置（凭据不入仓）
 *.env
 appsettings.*.Local.json
+
+# internal-only docs (local retention, not for client delivery)
+docs/nonconformity-register.md
+docs/setup-guide.md
